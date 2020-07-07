@@ -29,3 +29,9 @@ build/
 
 ### VS Code ###
 .vscode/
+
+### Logged files ###
+**/src/main/java/com/bsa/giphy/BSAGiphy/giphy/**
+
+### Properties ###
+src/main/resources/application.properties

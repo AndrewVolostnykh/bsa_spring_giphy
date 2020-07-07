@@ -24,18 +24,22 @@ public class GiphyService {
         RestTemplate restTemplate = new RestTemplate();
         UriComponentsBuilder builder = UriComponentsBuilder.fromHttpUrl(environment.getProperty("giphy.search.url"))
                 .queryParam("api_key", environment.getProperty("giphy.api.key"))
-                .queryParam("q", query.getQuery())
-                .queryParam("limit", 1)
+                .queryParam("tag", query.getQuery())
                 .queryParam("random_id", user_id);
 
         GifFileDto gifFile = restTemplate.getForObject(builder.toUriString(), GifFileDto.class);
 
         JSONObject json = new JSONObject(gifFile);
-        json = json.getJSONArray("data").getJSONObject(0);
+        json = json.getJSONObject("data");
 
         GifEntity gifEntity = new GifEntity();
         gifEntity.setId(json.getString("id"));
-        gifEntity.setUrl(json.getString("url"));
+        //at first take not url, take images object, from where take images, from where take downsized and in this take url
+
+        StringBuilder url = new StringBuilder(json.getJSONObject("images").getJSONObject("downsized").getString("url"));
+        url.replace(8, 14, "i");
+
+        gifEntity.setUrl(url.toString());
         gifEntity.setQuery(query.getQuery());
 
         return gifEntity;

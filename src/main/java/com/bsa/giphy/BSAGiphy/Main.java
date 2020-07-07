@@ -1,20 +1,37 @@
 package com.bsa.giphy.BSAGiphy;
 
-import com.bsa.giphy.BSAGiphy.entities.GifEntity;
-import com.bsa.giphy.BSAGiphy.processors.FileSystemProcessor;
+import com.bsa.giphy.BSAGiphy.entities.Cache;
 
-import java.io.File;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Map;
 
 public class Main {
     public static void main(String[] args) {
-        GifEntity gifEntity = new GifEntity();
-        gifEntity.setId("onotherFile");
-        gifEntity.setUrl("https://giphy.com/gifs/gif-artist-rheabambulu-tIwmTQ64D52XTuL8xd");
-        gifEntity.setQuery("newFile");
 
-        var fileProcessor = new FileSystemProcessor();
+        Cache cache = Cache.getInstance();
 
-        File file = fileProcessor.getGifPath(gifEntity.getQuery());
-        System.out.println(file.getName());
+        cache.updateCache("Andrew", "moon", "132asd");
+        cache.updateCache("Solya", "ligt", "wffwefd");
+        cache.updateCache("Andrew", "flame", "weefw3dxz");
+        cache.updateCache("Andrew", "moon", "vfgrbgtr");
+        cache.updateCache("Andrew", "flame", "sefsdfsfdANDREtr");
+        cache.updateCache("Andrew", "moon", "00x1245err");
+        cache.updateCache("Solya", "moon", "vfgrbgtr");
+
+
+        for(Map.Entry<String, Map<String, ArrayList<String>>> item : cache.getCacheMap().entrySet()) {
+            System.out.print("USER: " + item.getKey() + " , \n\tQUERY: ");
+            for(Map.Entry<String, ArrayList<String>> elements : item.getValue().entrySet()) {
+                System.out.print(elements.getKey());
+                for(String element : elements.getValue()) {
+                    System.out.println("\n\t\tGifID: " + element);
+                }
+            }
+        }
+
+        System.out.println("DOES GETTER WORK?");
+
+        System.out.println(cache.getGif("Andrew", "moon"));
     }
 }

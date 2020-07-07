@@ -1,29 +1,63 @@
 package com.bsa.giphy.BSAGiphy.entities;
 
-import java.util.HashMap;
-import java.util.Map;
+import org.springframework.context.annotation.Bean;
+import org.springframework.stereotype.Component;
 
+import java.util.*;
+
+@Component
 public class Cache {
-    private Map<String, Map<String, String[]>> map;
-    private Cache uniqInstance;
+    private Map<String, Map<String, ArrayList<String>>> map;
+    private static Cache uniqInstance;
+
+    public static final String PATH_TO_FILES = "D:\\Developing\\git_reposes\\bsa_giphy\\src\\main\\java\\com\\bsa\\giphy\\BSAGiphy\\giphy\\"; // ????
 
     private Cache(){
         map = new HashMap<>();
     }
 
-    public Cache getInstance() {
+    public static Cache getInstance() {
         if(uniqInstance == null){
-            this.uniqInstance = new Cache();
+            uniqInstance = new Cache();
         }
 
-        return this.uniqInstance;
+        return uniqInstance;
     }
 
-    public Map<String, Map<String, String[]>> getCacheMap() {
+    public Map<String, Map<String, ArrayList<String>>> getCacheMap() {
         return this.map;
     }
 
-    public void addUserGif(String user_id, String query, String gifId){
-        //TODO: logic for adding gif, user and query to cache
+    public void updateCache(String user_id, String query, String gifId){
+
+        var tempList = new ArrayList<String>();
+
+        if(this.map.get(user_id) != null){
+            if(this.map.get(user_id).get(query) != null){
+                tempList = this.map.get(user_id).get(query);
+                tempList.add(tempList.size(), gifId);
+                this.map.get(user_id).put(query, tempList);
+            } else {
+                tempList.add(gifId);
+                this.map.get(user_id).put(query, tempList);
+            }
+        } else {
+            var userMap = new HashMap<String, ArrayList<String>>();
+            tempList.add(gifId);
+            userMap.put(query, tempList);
+            this.map.put(user_id, userMap);
+        }
+
+    }
+
+    public String getGif (String user_id, String query) {
+        if(this.map.get(user_id) != null) {
+            if(this.map.get(user_id).get(query) != null) {
+                var queriedList = new ArrayList<String>();
+                queriedList = this.map.get(user_id).get(query);
+                return queriedList.get(new Random().nextInt(queriedList.size()));
+            }
+        }
+        return null;
     }
 }
