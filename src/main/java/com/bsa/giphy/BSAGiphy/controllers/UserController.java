@@ -7,6 +7,8 @@ import com.bsa.giphy.BSAGiphy.processors.FileSystemProcessor;
 import com.bsa.giphy.BSAGiphy.processors.Parser;
 import com.bsa.giphy.BSAGiphy.services.GiphyService;
 import com.bsa.giphy.BSAGiphy.utils.UserUtil;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -27,6 +29,8 @@ public class UserController {
     UserUtil userUtil;
     Parser parser;
 
+    Logger logger = LoggerFactory.getLogger(UserController.class);
+
     @Autowired
     public UserController(GiphyService giphyServ,
                           FileSystemProcessor fileProcessor,
@@ -42,11 +46,15 @@ public class UserController {
 
     @PostMapping("{user_id}")
     public ResponseEntity<?> generateGif(@RequestParam @PathVariable String user_id,
-                                         @NotBlank @RequestBody Query query
-                                         /*@RequestHeader(name="X-BSA-GIPHY") boolean present*/) {
+                                         @NotBlank @RequestBody Query query,
+                                         @RequestHeader(name="X-BSA-GIPHY") boolean present) {
         if(validator(user_id) != null) {
             return validator(user_id);
         }
+
+        System.out.println(present);
+
+        logger.info("POST request by USER: " + user_id + ", CLASS: UserController, METHOD: generateGif(...); QUERY: " + query.getQuery());
 
         Map<String, String> response = new HashMap<>();
 
@@ -74,12 +82,14 @@ public class UserController {
     public ResponseEntity<?> searchGif(@PathVariable String user_id,
                                        @NotBlank String query
                                        /*@RequestHeader(name="X-BSA-GIPHY") boolean present*/) {
-
-        var response = new HashMap<String, String>();
-
         if(validator(user_id) != null) {
             return validator(user_id);
         }
+
+        logger.info("GET request, USER: " + user_id + ", CLASS: UserController, METHOD: searchGif, QUERY: " + query);
+
+        var response = new HashMap<String, String>();
+
 
         if(userUtil.invalid(user_id) || query.isBlank() || query.isEmpty()) {
             response.put("message", "Invalid request ");
@@ -110,6 +120,9 @@ public class UserController {
         if(validator(user_id) != null) {
             return validator(user_id);
         }
+
+        logger.info("GET request, USER: " + user_id + ", CLASS: UserController, METHOD: getAllGifs(...)");
+
         var result = parser.parseFullCache(fileSystemProcessor.getFullUserCache(user_id));
         return new ResponseEntity<>(result, HttpStatus.OK);
     }
@@ -119,6 +132,8 @@ public class UserController {
         if(validator(user_id) != null) {
             return validator(user_id);
         }
+
+        logger.info("GET request, USER: " + user_id + ", CLASS: UserController, METHOD: getHistory(...)");
 
         HistoryDto[] result = parser.parseHistory(fileSystemProcessor.getHistory(user_id));
         if(result != null) {
@@ -134,6 +149,8 @@ public class UserController {
             return validator(user_id);
         }
 
+        logger.info("DELETE request, USER: " + user_id + ", CLASS: UserController, METHOD: clearHistory(...)");
+
         if(fileSystemProcessor.deleteHistory(user_id)) {
             return ResponseEntity.ok().build();
         } else {
@@ -146,6 +163,8 @@ public class UserController {
         if(validator(user_id) != null) {
             return validator(user_id);
         }
+
+        logger.info("GET request, USER: " + user_id + ", CLASS: UserController, METHOD: searchGif(...), QUERY: " + query + ", FORCE: " + force);
 
         if(!force) {
             var gif = cache.getGif(user_id, query);
@@ -166,21 +185,29 @@ public class UserController {
     }
 
     @PostMapping("{user_id}/generate")
-    public ResponseEntity<?> createGif(@PathVariable String user_id, @RequestBody Query query, boolean force) {
+    public ResponseEntity<?> createGif(@PathVariable String user_id, @RequestBody Query query) {
         if(validator(user_id) != null) {
             return validator(user_id);
         }
 
+        logger.info("POST request, USER: " + user_id + ", CLASS: UserController, METHOD: createGif(...), QUERY: " + query.getQuery() + ", FORCE: " + query.getForce());
+
         File gifFile;
-        if(!force) {
+        if(!query.getForce()) {
+            System.out.println("Taking from a memory works");
             gifFile = fileSystemProcessor.getGifPath(query.getQuery());
             if(gifFile != null) {
                 return new ResponseEntity<>(gifFile.getAbsolutePath(), HttpStatus.OK);
             }
         }
 
-        var gifEntity = giphyService.searchGif(user_id, query);
-        fileSystemProcessor.addGifToUserFolder(user_id, gifEntity);
+        var gifEntity = giphyService.searchGif(null, query);
+        var resultFile = fileSystemProcessor.copyToUserFolder(user_id, query.getQuery(), fileSystemProcessor.downloadGifByUrl(gifEntity).getPath());
+
+        if(resultFile == null) {
+            return ResponseEntity.notFound().build();
+        }
+
         gifFile = fileSystemProcessor.getGifPath(query.getQuery());
 
         return new ResponseEntity<>(gifFile, HttpStatus.OK);
@@ -191,6 +218,8 @@ public class UserController {
         if(validator(user_id) != null) {
             return validator(user_id);
         }
+
+        logger.info("DELETE request, USER: " + user_id + ", CLASS: UserController, METHOD: clearMemoryCache(...), QUERY:" + query);
 
         if(query == null) {
             cache.resetUser(user_id);
@@ -205,6 +234,8 @@ public class UserController {
         if(validator(user_id) != null) {
             return validator(user_id);
         }
+
+        logger.info("DELETE request, USER: " + user_id + ", CLASS: UserController, METHOD: deleteUser(...)");
 
         cache.resetUser(user_id);
         fileSystemProcessor.clearUserCache(user_id);

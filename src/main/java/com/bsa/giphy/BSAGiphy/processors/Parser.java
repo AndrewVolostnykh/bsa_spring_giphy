@@ -18,17 +18,27 @@ public class Parser {
         int counter = 0;
         int cacheCounter = 0;
 
-
-        for(Map.Entry<String, File[]> gif : queriedCache.entrySet()) {
-            String[] array = new String[gif.getValue().length];
-            for(File file : queriedCache.get(gif.getKey())) {
-                array[counter] = file.getAbsolutePath();
+        // very sad parser... but unfortunately i have no time to refactor it :(
+        for(Map.Entry<String, File[]> path : queriedCache.entrySet()) {
+            String[] array = new String[path.getValue().length];
+            for(File file : queriedCache.get(path.getKey())) {
+                if(file.listFiles() != null) {
+                    System.out.println("Included for working");
+                    array = new String[file.listFiles().length + 1];
+                    for(File gif : file.listFiles()) {
+                        array[counter] = gif.getAbsolutePath();
+                        counter++;
+                    }
+                    counter = 0;
+                } else { // crutch ...
+                    array[counter] = file.getAbsolutePath();
+                }
                 counter++;
             }
-            cache[cacheCounter] = new CacheDto();
-            cache[cacheCounter].setQuery(gif.getKey());
-            cache[cacheCounter].setGifs(array);
             counter = 0;
+            cache[cacheCounter] = new CacheDto();
+            cache[cacheCounter].setQuery(path.getKey());
+            cache[cacheCounter].setGifs(array);
             cacheCounter++;
         }
 
