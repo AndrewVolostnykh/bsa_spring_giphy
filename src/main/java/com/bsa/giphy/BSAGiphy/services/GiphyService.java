@@ -34,7 +34,6 @@ public class GiphyService {
 
         GifEntity gifEntity = new GifEntity();
         gifEntity.setId(json.getString("id"));
-        //at first take not url, take images object, from where take images, from where take downsized and in this take url
 
         StringBuilder url = new StringBuilder(json.getJSONObject("images").getJSONObject("downsized").getString("url"));
         url.replace(8, 14, "i");

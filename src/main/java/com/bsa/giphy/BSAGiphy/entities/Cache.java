@@ -1,6 +1,5 @@
 package com.bsa.giphy.BSAGiphy.entities;
 
-import org.springframework.context.annotation.Bean;
 import org.springframework.stereotype.Component;
 
 import java.util.*;

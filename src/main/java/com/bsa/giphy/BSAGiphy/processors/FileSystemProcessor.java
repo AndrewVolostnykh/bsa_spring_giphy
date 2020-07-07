@@ -6,11 +6,7 @@ import org.springframework.stereotype.Service;
 
 import java.io.*;
 import java.net.URL;
-import java.nio.file.FileVisitResult;
 import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.SimpleFileVisitor;
-import java.nio.file.attribute.BasicFileAttributes;
 import java.time.LocalDate;
 import java.util.HashMap;
 import java.util.Map;
@@ -99,7 +95,7 @@ public class FileSystemProcessor {
             Files.copy(source.toPath(), dest.toPath());
             historyWriter(user_id, query, dest);
         } catch (IOException ex) {
-            System.out.println("file already exists"); // here have to be logger
+            System.out.println("file already exists");
         }
         return new File(dest, source.getName());
     }

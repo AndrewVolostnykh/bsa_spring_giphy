@@ -63,7 +63,6 @@ public class Parser {
                 historyList.add(history);
             }
         } catch (IOException ex) {
-            // logger here too
             System.out.println("Impossible to read file");
         }
 
