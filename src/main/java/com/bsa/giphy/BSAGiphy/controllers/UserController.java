@@ -1,70 +1,63 @@
 package com.bsa.giphy.BSAGiphy.controllers;
 
-import com.bsa.giphy.BSAGiphy.dto.GifFileDto;
 import com.bsa.giphy.BSAGiphy.dto.Query;
-import com.fasterxml.jackson.core.*;
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import org.json.JSONObject;
+import com.bsa.giphy.BSAGiphy.processors.FileSystemProcessor;
+import com.bsa.giphy.BSAGiphy.services.GiphyService;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.core.env.Environment;
-import org.springframework.http.*;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.client.RestTemplate;
-import org.springframework.web.util.UriComponentsBuilder;
 
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.lang.reflect.Type;
-import java.math.BigDecimal;
-import java.math.BigInteger;
-import java.net.URL;
-import java.nio.charset.Charset;
-import java.util.*;
+import javax.validation.constraints.NotNull;
+import java.io.File;
+import java.util.HashMap;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/user/")
 public class UserController {
-    private Environment environment; // this variable using to query data from application.properties
+
+    GiphyService giphyService;
 
     @Autowired
-    public UserController(Environment env){
-        this.environment = env;
+    public UserController(GiphyService giphyServ){
+        this.giphyService = giphyServ;
     }
 
     @PostMapping("{user_id}")
     public ResponseEntity<?> generateGif(@PathVariable String user_id, @RequestBody Query query) {
 
-        System.out.println("Inputed user id: " + user_id);
-        System.out.println(query.getQuery());
+        Map<String, String> response = new HashMap<>();
+        var fileSystemProcessor = new FileSystemProcessor();
 
-        if(user_id.isEmpty() || user_id.isBlank() || user_id.matches(".*[|*?<>:\"].*")){
-            return new ResponseEntity<>(new HashMap<String, String>().put("message", "Impossible to use this id"), HttpStatus.BAD_REQUEST);
+
+        if (user_id.isEmpty() || user_id.isBlank() || user_id.matches(".*[|*?<>:/\"].*")) { // validation have to be in other class
+            Map<String, String> tempResponse = new HashMap<>();
+            tempResponse.put("message", "Invalid name, dont use | \\ ? < > * : / \" ");
+            return new ResponseEntity<>(tempResponse, HttpStatus.BAD_REQUEST);
         }
 
-        Map<String, Object> requestMap = new HashMap<>();
-        requestMap.put("api_key", environment.getProperty("giphy.api.key"));
-        requestMap.put("q", query.getQuery());
-        requestMap.put("limit", 1);
-        requestMap.put("random_id", user_id);
+        File gifFile = fileSystemProcessor.getGifPath(query.getQuery());
+        if (gifFile != null) {
+            File result = fileSystemProcessor.copyToUserFolder(user_id, query.getQuery(), gifFile.getPath());
+            // update virtual cache
+            response.put("query", query.getQuery());// repeating of code
+            response.put("id", result.getName());
+        } else {
+            var gifEntity = giphyService.searchGif(user_id, query);
+            System.out.println(gifEntity.getId());
+            fileSystemProcessor.addGifToUserFolder(user_id, gifEntity);
 
-        RestTemplate restTemplate = new RestTemplate();
-        UriComponentsBuilder builder = UriComponentsBuilder.fromHttpUrl(environment.getProperty("giphy.search.url"))
-                .queryParam("api_key", environment.getProperty("giphy.api.key"))
-                .queryParam("q", query.getQuery())
-                .queryParam("limit", 1)
-                .queryParam("random_id", user_id);
+            response.put("query", query.getQuery());// repeating of code
+            response.put("id", gifEntity.getId());
+        }
 
-        GifFileDto gifFile = restTemplate.getForObject(builder.toUriString(), GifFileDto.class);
+        return new ResponseEntity<>(response, HttpStatus.OK);
+    }
 
-        JSONObject json = new JSONObject(gifFile);
-        System.out.println(json.getJSONArray("data").getJSONObject(0).getString("url"));
-
-        return new ResponseEntity<>("success", HttpStatus.OK);
-
-
+    @GetMapping("{user_id}")
+    public ResponseEntity<?> searchGif(@PathVariable String user_id, @NotNull @RequestBody Query query) {
+        return null;
     }
 
 }
