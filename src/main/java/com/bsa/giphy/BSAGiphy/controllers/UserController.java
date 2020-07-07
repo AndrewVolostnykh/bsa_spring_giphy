@@ -4,12 +4,13 @@ import com.bsa.giphy.BSAGiphy.dto.Query;
 import com.bsa.giphy.BSAGiphy.entities.Cache;
 import com.bsa.giphy.BSAGiphy.processors.FileSystemProcessor;
 import com.bsa.giphy.BSAGiphy.services.GiphyService;
+import com.bsa.giphy.BSAGiphy.utils.UserUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import javax.validation.constraints.NotNull;
+import javax.validation.constraints.NotBlank;
 import java.io.File;
 import java.util.HashMap;
 import java.util.Map;
@@ -21,22 +22,27 @@ public class UserController {
     GiphyService giphyService;
     FileSystemProcessor fileSystemProcessor;
     Cache cache;
+    UserUtil userUtil;
 
     @Autowired
-    public UserController(GiphyService giphyServ, FileSystemProcessor fileProcessor, Cache cache){
+    public UserController(GiphyService giphyServ,
+                          FileSystemProcessor fileProcessor,
+                          Cache cache,
+                          UserUtil userUtil){
         this.giphyService = giphyServ;
         this.fileSystemProcessor = fileProcessor;
         this.cache = cache;
+        this.userUtil = userUtil;
     }
 
     @PostMapping("{user_id}")
-    public ResponseEntity<?> generateGif(@PathVariable String user_id, @RequestBody Query query) {
+    public ResponseEntity<?> generateGif(@PathVariable String user_id, @NotBlank @RequestBody Query query) {
 
-        //TODO: add history about adding file to folder
         Map<String, String> response = new HashMap<>();
 
+        //TODO: query like an entity unnecessary
 
-        if (user_id.isEmpty() || user_id.isBlank() || user_id.matches(".*[|*?<>:/\"].*")) { // validation have to be in other class
+        if (userUtil.invalid(user_id)) {
             Map<String, String> tempResponse = new HashMap<>();
             tempResponse.put("message", "Invalid name, dont use | \\ ? < > * : / \" ");
             return new ResponseEntity<>(tempResponse, HttpStatus.BAD_REQUEST);
@@ -63,8 +69,32 @@ public class UserController {
     }
 
     @GetMapping("{user_id}")
-    public ResponseEntity<?> searchGif(@PathVariable String user_id, @NotNull @RequestBody Query query) {
-        return null;
+    public ResponseEntity<?> searchGif(@PathVariable String user_id, @NotBlank String query) {
+
+        var response = new HashMap<String, String>();
+
+        if(userUtil.invalid(user_id) || query.isBlank() || query.isEmpty()) {
+            response.put("message", "Invalid request ");
+            return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
+        }
+
+        if(cache.getGif(user_id, query) != null) {
+            response.put("gif", fileSystemProcessor.getSTORAGE_PATH() + cache.getGif(user_id, query) + ".gif");
+            response.put("query", query);
+            return new ResponseEntity<>(response, HttpStatus.OK);
+        } else {
+            if (fileSystemProcessor.getFromUserFolder(user_id, query) != null) {
+                System.out.println("Taken from file system");
+                File gif = fileSystemProcessor.getFromUserFolder(user_id, query);
+                response.put("gif", gif.toPath().toString());
+                response.put("query", query);
+                return new ResponseEntity<>(response, HttpStatus.OK);
+            } else {
+                response.put("message", "Cant find this file!");
+                return new ResponseEntity<>(response, HttpStatus.NOT_FOUND);
+            }
+        }
+
     }
 
 }

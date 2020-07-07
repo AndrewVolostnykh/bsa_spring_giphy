@@ -10,8 +10,6 @@ public class Cache {
     private Map<String, Map<String, ArrayList<String>>> map;
     private static Cache uniqInstance;
 
-    public static final String PATH_TO_FILES = "D:\\Developing\\git_reposes\\bsa_giphy\\src\\main\\java\\com\\bsa\\giphy\\BSAGiphy\\giphy\\"; // ????
-
     private Cache(){
         map = new HashMap<>();
     }

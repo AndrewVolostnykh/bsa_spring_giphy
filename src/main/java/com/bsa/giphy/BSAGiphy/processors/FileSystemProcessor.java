@@ -51,6 +51,15 @@ public class FileSystemProcessor {
         return files != null ? files[new Random().nextInt(files.length)] : null;
     }
 
+    public File getFromUserFolder(String user_id, String query) {
+        File userGif = new File(STORAGE_PATH + "users\\" + user_id, query);
+        if(userGif.listFiles() != null) {
+            return userGif.listFiles()[new Random().nextInt(userGif.listFiles().length)];
+        }
+
+        return null;
+    }
+
     public void addGifToUserFolder(String user_id, GifEntity gifEntity) {
 
         String path = STORAGE_PATH + "\\users\\" +  user_id + "\\" + gifEntity.getQuery() + "\\";
@@ -60,7 +69,6 @@ public class FileSystemProcessor {
             directory.mkdirs();
         }
 
-        File userGif = new File(directory, gifEntity.getId() + ".gif"); // mb usable
         File cacheGif;
 
         cacheGif = getGifPath(gifEntity);
@@ -79,7 +87,6 @@ public class FileSystemProcessor {
         File source = new File(cachePath);
         File dest = new File(STORAGE_PATH + "\\users\\" + user_id + "\\" + query);
         try {
-            // also here logged to history
             dest.mkdirs();
             dest = new File(dest, source.getName());
             Files.copy(source.toPath(), dest.toPath());
@@ -107,4 +114,7 @@ public class FileSystemProcessor {
         }
     }
 
+    public String getSTORAGE_PATH() {
+        return STORAGE_PATH;
+    }
 }
