@@ -1,12 +1,19 @@
 package com.bsa.giphy.BSAGiphy.processors;
 
 import com.bsa.giphy.BSAGiphy.entities.GifEntity;
+import org.apache.commons.io.FileUtils;
 import org.springframework.stereotype.Service;
 
 import java.io.*;
 import java.net.URL;
+import java.nio.file.FileVisitResult;
 import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.SimpleFileVisitor;
+import java.nio.file.attribute.BasicFileAttributes;
 import java.time.LocalDate;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Random;
 
 @Service
@@ -19,7 +26,7 @@ public class FileSystemProcessor {
 
             File directory = new File(STORAGE_PATH + "cache\\" + inputGifEntity.getQuery());
             if(!directory.exists()) {
-                directory.mkdir();
+                directory.mkdirs();
             }
 
             File gif = new File(directory, inputGifEntity.getId() + ".gif");
@@ -112,6 +119,64 @@ public class FileSystemProcessor {
         } catch (IOException ex) {
             ex.printStackTrace();
         }
+    }
+
+    public void clearCache() {
+        File cachePath = new File(STORAGE_PATH + "cache");
+        cachePath.delete();
+    }
+
+    public void clearUserCache(String user_id) {
+        File userCache = new File(STORAGE_PATH + "users\\" + user_id);
+//        userCacheDeleter(userCache);
+        try {
+            FileUtils.forceDelete(userCache);
+        } catch (IOException ex) {
+            System.out.println(ex);
+        }
+    }
+
+    public Map<String, File[]> getFullCache(String query){
+        return getFullCache(query, "cache");
+    }
+
+    public Map<String, File[]> getFullUserCache(String user_id){
+        return getFullCache(null, "users\\" + user_id);
+    }
+
+    public Map<String, File[]> getFullCache(String query, String pathSpecifier) {
+        if(query != null){
+            File[] files = getByQueryCache(query);
+            var map = new HashMap<String, File[]>();
+            map.put(query, files);
+            return map;
+        } else {
+            int counter = 0;
+            File genFile = new File(STORAGE_PATH + pathSpecifier);
+            var map = new HashMap<String, File[]>();
+            File[] childs = new File[genFile.listFiles().length];
+            for(File gif : genFile.listFiles()) {
+                childs[counter] = gif;
+                counter++;
+            }
+
+            map.put("gifs", childs);
+            return map;
+        }
+    }
+
+    public File[] getByQueryCache(String query) {
+        var file = new File(STORAGE_PATH + "cache\\" + query);
+        File[] files = file.listFiles();
+        return files;
+    }
+
+    public File getHistory(String user_id) {
+        return new File(STORAGE_PATH + "users\\" + user_id + "\\history.csv");
+    }
+
+    public boolean deleteHistory(String user_id) {
+        return new File(STORAGE_PATH + "users\\" + user_id + "\\history.csv").delete();
     }
 
     public String getSTORAGE_PATH() {

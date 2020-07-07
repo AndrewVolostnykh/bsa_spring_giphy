@@ -58,4 +58,12 @@ public class Cache {
         }
         return null;
     }
+
+    public void resetUser(String user_id) {
+        this.map.remove(user_id);
+    }
+
+    public void resetUser(String user_id, String query){
+        this.map.get(user_id).remove(query);
+    }
 }

@@ -1,8 +1,10 @@
 package com.bsa.giphy.BSAGiphy.controllers;
 
+import com.bsa.giphy.BSAGiphy.dto.HistoryDto;
 import com.bsa.giphy.BSAGiphy.dto.Query;
 import com.bsa.giphy.BSAGiphy.entities.Cache;
 import com.bsa.giphy.BSAGiphy.processors.FileSystemProcessor;
+import com.bsa.giphy.BSAGiphy.processors.Parser;
 import com.bsa.giphy.BSAGiphy.services.GiphyService;
 import com.bsa.giphy.BSAGiphy.utils.UserUtil;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -21,32 +23,32 @@ public class UserController {
 
     GiphyService giphyService;
     FileSystemProcessor fileSystemProcessor;
-    Cache cache;
+    Cache cache; // this works because spring using reflection, i know this ;)
     UserUtil userUtil;
+    Parser parser;
 
     @Autowired
     public UserController(GiphyService giphyServ,
                           FileSystemProcessor fileProcessor,
                           Cache cache,
-                          UserUtil userUtil){
+                          UserUtil userUtil,
+                          Parser parser){
         this.giphyService = giphyServ;
         this.fileSystemProcessor = fileProcessor;
         this.cache = cache;
         this.userUtil = userUtil;
+        this.parser = parser;
     }
 
     @PostMapping("{user_id}")
-    public ResponseEntity<?> generateGif(@PathVariable String user_id, @NotBlank @RequestBody Query query) {
+    public ResponseEntity<?> generateGif(@RequestParam @PathVariable String user_id,
+                                         @NotBlank @RequestBody Query query
+                                         /*@RequestHeader(name="X-BSA-GIPHY") boolean present*/) {
+        if(validator(user_id) != null) {
+            return validator(user_id);
+        }
 
         Map<String, String> response = new HashMap<>();
-
-        //TODO: query like an entity unnecessary
-
-        if (userUtil.invalid(user_id)) {
-            Map<String, String> tempResponse = new HashMap<>();
-            tempResponse.put("message", "Invalid name, dont use | \\ ? < > * : / \" ");
-            return new ResponseEntity<>(tempResponse, HttpStatus.BAD_REQUEST);
-        }
 
         File gifFile = fileSystemProcessor.getGifPath(query.getQuery());
         if (gifFile != null) {
@@ -69,9 +71,15 @@ public class UserController {
     }
 
     @GetMapping("{user_id}")
-    public ResponseEntity<?> searchGif(@PathVariable String user_id, @NotBlank String query) {
+    public ResponseEntity<?> searchGif(@PathVariable String user_id,
+                                       @NotBlank String query
+                                       /*@RequestHeader(name="X-BSA-GIPHY") boolean present*/) {
 
         var response = new HashMap<String, String>();
+
+        if(validator(user_id) != null) {
+            return validator(user_id);
+        }
 
         if(userUtil.invalid(user_id) || query.isBlank() || query.isEmpty()) {
             response.put("message", "Invalid request ");
@@ -97,4 +105,118 @@ public class UserController {
 
     }
 
+    @GetMapping("{user_id}/all")
+    public ResponseEntity<?> getAllGifs(@PathVariable String user_id) {
+        if(validator(user_id) != null) {
+            return validator(user_id);
+        }
+        var result = parser.parseFullCache(fileSystemProcessor.getFullUserCache(user_id));
+        return new ResponseEntity<>(result, HttpStatus.OK);
+    }
+
+    @GetMapping("{user_id}/history")
+    public ResponseEntity<?> getHistory(@PathVariable String user_id) {
+        if(validator(user_id) != null) {
+            return validator(user_id);
+        }
+
+        HistoryDto[] result = parser.parseHistory(fileSystemProcessor.getHistory(user_id));
+        if(result != null) {
+            return new ResponseEntity<>(result, HttpStatus.OK);
+        } else {
+            return ResponseEntity.notFound().build();
+        }
+    }
+
+    @DeleteMapping("{user_id}/history/clean")
+    public ResponseEntity<?> cleanHistory(@PathVariable String user_id) {
+        if(validator(user_id) != null) {
+            return validator(user_id);
+        }
+
+        if(fileSystemProcessor.deleteHistory(user_id)) {
+            return ResponseEntity.ok().build();
+        } else {
+            return ResponseEntity.badRequest().build();
+        }
+    }
+
+    @GetMapping("{user_id}/search")
+    public ResponseEntity<?> searchGif(@PathVariable String user_id, String query, boolean force) {
+        if(validator(user_id) != null) {
+            return validator(user_id);
+        }
+
+        if(!force) {
+            var gif = cache.getGif(user_id, query);
+            if(gif != null) {
+                return new ResponseEntity<>(gif, HttpStatus.OK);
+            }
+        }
+
+        var gif = fileSystemProcessor.getGifPath(query);
+
+        if(gif == null) {
+            return ResponseEntity.notFound().build();
+        }
+
+        cache.updateCache(user_id, query, gif.getAbsolutePath());
+
+        return new ResponseEntity<>(gif.getAbsolutePath(), HttpStatus.OK);
+    }
+
+    @PostMapping("{user_id}/generate")
+    public ResponseEntity<?> createGif(@PathVariable String user_id, @RequestBody Query query, boolean force) {
+        if(validator(user_id) != null) {
+            return validator(user_id);
+        }
+
+        File gifFile;
+        if(!force) {
+            gifFile = fileSystemProcessor.getGifPath(query.getQuery());
+            if(gifFile != null) {
+                return new ResponseEntity<>(gifFile.getAbsolutePath(), HttpStatus.OK);
+            }
+        }
+
+        var gifEntity = giphyService.searchGif(user_id, query);
+        fileSystemProcessor.addGifToUserFolder(user_id, gifEntity);
+        gifFile = fileSystemProcessor.getGifPath(query.getQuery());
+
+        return new ResponseEntity<>(gifFile, HttpStatus.OK);
+    }
+
+    @DeleteMapping("{user_id}/reset")
+    public ResponseEntity<?> clearMemoryCache(@PathVariable String user_id, String query) {
+        if(validator(user_id) != null) {
+            return validator(user_id);
+        }
+
+        if(query == null) {
+            cache.resetUser(user_id);
+        } else {
+            cache.resetUser(user_id, query);
+        }
+        return ResponseEntity.ok().build();
+    }
+
+    @DeleteMapping("{user_id}/clean")
+    public ResponseEntity<?> deleteUser(@PathVariable String user_id) {
+        if(validator(user_id) != null) {
+            return validator(user_id);
+        }
+
+        cache.resetUser(user_id);
+        fileSystemProcessor.clearUserCache(user_id);
+        return ResponseEntity.ok().build();
+    }
+
+    private ResponseEntity<?> validator(String user_id) {
+        if (userUtil.invalid(user_id)) {
+            Map<String, String> tempResponse = new HashMap<>();
+            tempResponse.put("message", "Invalid request");
+            return new ResponseEntity<>(tempResponse, HttpStatus.BAD_REQUEST);
+        }
+        return null;
+    }
 }
